@@ -35,20 +35,36 @@ public class CartController {
         List<CartDTO> cartDTOS = cartService.getAllCarts();
         return new ResponseEntity<List<CartDTO>>(cartDTOS,HttpStatus.FOUND);
     }
+//    @GetMapping("/carts/users/cart")
+//    public ResponseEntity<CartDTO> getCartById(){
+//        String emailId = authUtil.loggedInEmail();
+//        Cart cart = cartRepository.findCartByEmail(emailId);
+//        Long cartId = cart.getCartId();
+//        CartDTO cartDTO = cartService.getCart(emailId,cartId);
+//        return new ResponseEntity<CartDTO>(cartDTO,HttpStatus.OK);
+//    }
     @GetMapping("/carts/users/cart")
-    public ResponseEntity<CartDTO> getCartById(){
+    public ResponseEntity<CartDTO> getCartById() {
+
         String emailId = authUtil.loggedInEmail();
+
         Cart cart = cartRepository.findCartByEmail(emailId);
-        Long cartId = cart.getCartId();
-        CartDTO cartDTO = cartService.getCart(emailId,cartId);
-        return new ResponseEntity<CartDTO>(cartDTO,HttpStatus.OK);
+
+        if (cart == null) {
+            cart = cartService.createCart();
+        }
+
+        CartDTO cartDTO = cartService.getCart(emailId, cart.getCartId());
+
+        return new ResponseEntity<>(cartDTO, HttpStatus.OK);
     }
+
 
     @PutMapping("/cart/products/{productId}/quantity/{operation}")
     public ResponseEntity<CartDTO> updateCartProduct(@PathVariable Long productId,
                                                      @PathVariable String operation){
         CartDTO cartDTO = cartService.updateProductQuantityInCart(productId,
-                operation.equalsIgnoreCase("delete") ? -1:1);
+                operation.equalsIgnoreCase("decrease") ? -1:1);
         return new ResponseEntity<CartDTO>(cartDTO,HttpStatus.OK);
     }
 

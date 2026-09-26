@@ -113,6 +113,40 @@ public class CartServiceImpl implements CartService{
     }
 
     @Override
+    public CartDTO getUserCart() {
+
+        String emailId = authUtil.loggedInEmail();
+
+        Cart cart = cartRepository.findCartByEmail(emailId);
+
+        if (cart == null) {
+            cart = new Cart();
+            cart.setTotalPrice(0.0);
+            cart.setUser(authUtil.loggedInUser());
+
+            cart = cartRepository.save(cart);
+        }
+
+        CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+
+        List<ProductDTO> products = cart.getCartItems().stream()
+                .map(item -> {
+                    ProductDTO productDTO =
+                            modelMapper.map(item.getProduct(), ProductDTO.class);
+
+                    productDTO.setQuantity(item.getQuantity());
+
+                    return productDTO;
+                })
+                .toList();
+
+        cartDTO.setProducts(products);
+
+        return cartDTO;
+    }
+
+
+    @Override
     public CartDTO getCart(String emailId, Long cartId) {
         Cart cart = cartRepository.findCartByEmailAndCartId(emailId,cartId);
         if (cart == null){
@@ -185,7 +219,7 @@ public class CartServiceImpl implements CartService{
         cartDTO.setProducts(productStream.toList());
         return cartDTO;
     }
-    private Cart createCart(){
+    public Cart createCart(){
         Cart userCart = cartRepository.findCartByEmail(authUtil.loggedInEmail());
         if (userCart!=null){
             return userCart;
@@ -197,24 +231,46 @@ public class CartServiceImpl implements CartService{
         Cart newCart = cartRepository.save(cart);
         return newCart;
     }
+
     @Transactional
     @Override
     public String deleteProductFromCart(Long cartId, Long productId) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(()-> new ResourceNotFoundException("Cart", "cartId", cartId));
-        CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cartId,productId);
 
-        if (cartItem == null){
-            throw  new ResourceNotFoundException("Product","productId",productId);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Cart", "cartId", cartId)
+                );
+
+        CartItem cartItem = cartItemRepository
+                .findCartItemByProductIdAndCartId(cartId, productId);
+
+        if (cartItem == null) {
+            throw new ResourceNotFoundException(
+                    "Product",
+                    "productId",
+                    productId
+            );
         }
 
-        cart.setTotalPrice(cart.getTotalPrice()-
-                (cartItem.getProductPrice() * cartItem.getQuantity()));
+        double itemTotal =
+                cartItem.getProductPrice() * cartItem.getQuantity();
 
-        cartItemRepository.deleteCartItemByProductIdAndCartId(cartId, productId);
+        cart.setTotalPrice(
+                Math.max(0.0, cart.getTotalPrice() - itemTotal)
+        );
 
-        return "Product "+cartItem.getProduct().getProductName() + " removed from the cart!!!";
+        cartItemRepository.deleteCartItemByProductIdAndCartId(
+                cartId,
+                productId
+        );
+
+        cartRepository.save(cart);
+
+        return "Product " +
+                cartItem.getProduct().getProductName() +
+                " removed from the cart!!!";
     }
+
 
     @Override
     public void updateProductInCarts(Long cartId, Long productId) {
