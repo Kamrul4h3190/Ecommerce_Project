@@ -60,6 +60,8 @@ public class ProductServiceImpl implements ProductService{
 
         if (isProductNotPresent) {
             Product product = modelMapper.map(productDTO, Product.class);
+//            product.setActive(true);
+            product.setActive(productDTO.isActive());
             product.setImage("default.png");
             product.setCategory(category);
             double specialPrice = product.getPrice() -
@@ -79,6 +81,8 @@ public class ProductServiceImpl implements ProductService{
                 :Sort.by(sortBy).descending();
         Pageable pageDetails = PageRequest.of(pageNumber,pageSize,sortByAndOrder);
         Specification<Product> spec = Specification.allOf();
+        spec = spec.and((root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("isActive")));
+
         if (keyword!=null && !keyword.isEmpty()){
             spec = spec.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("productName")), "%"+keyword.toLowerCase()+"%"));
@@ -109,13 +113,21 @@ public class ProductServiceImpl implements ProductService{
         return productResponse;
     }
     @Override
-    public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+    public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder,Boolean isActive) {
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
 
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
-        Page<Product> pageProducts = productRepository.findAll(pageDetails);
+//        Page<Product> pageProducts = productRepository.findAll(pageDetails);
+        Specification<Product> spec = Specification.allOf();
+
+        if (isActive!=null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("isActive"), isActive));
+        }
+
+        Page<Product> pageProducts = productRepository.findAll(spec, pageDetails);
 
         List<Product> products = pageProducts.getContent();
 
@@ -136,6 +148,18 @@ public class ProductServiceImpl implements ProductService{
         productResponse.setLastPage(pageProducts.isLast());
         return productResponse;
     }
+
+    @Override
+    public ProductDTO activateProduct(Long productId) {
+        Product productFromDb = productRepository.findById(productId)
+                .orElseThrow(()-> new ResourceNotFoundException("Product","productId",productId));
+
+        productFromDb.setActive(true);
+        Product savedProduct = productRepository.save(productFromDb);
+
+        return modelMapper.map(savedProduct,ProductDTO.class);
+    }
+
     private String constructImageUrl(String imageName){
         return imageBaseUrl.endsWith("/") ? imageBaseUrl+imageName : imageBaseUrl+"/"+imageName;
     }
@@ -150,7 +174,7 @@ public class ProductServiceImpl implements ProductService{
                 :Sort.by(sortBy).descending();
         Pageable pageDetails = PageRequest.of(pageNumber,pageSize,sortByAndOrder);
 //        Page<Product> pageProducts = productRepository.findByCategoryOrderByPriceAsc(category ,pageDetails);
-        Page<Product> pageProducts = productRepository.findByCategory(category ,pageDetails);
+        Page<Product> pageProducts = productRepository.findByCategoryAndIsActiveTrue(category ,pageDetails);
 
         List<Product> products = pageProducts.getContent();
 
@@ -176,7 +200,7 @@ public class ProductServiceImpl implements ProductService{
                 ? Sort.by(sortBy).ascending()
                 :Sort.by(sortBy).descending();
         Pageable pageDetails = PageRequest.of(pageNumber,pageSize,sortByAndOrder);
-        Page<Product> pageProducts = productRepository.findByProductNameLikeIgnoreCase('%' + keyword + '%', pageDetails);
+        Page<Product> pageProducts = productRepository.findByProductNameLikeIgnoreCaseAndIsActiveTrue('%' + keyword + '%', pageDetails);
 
         List<Product>  products = pageProducts.getContent();
         List<ProductDTO> productDTOS = products.stream()
@@ -206,6 +230,7 @@ public class ProductServiceImpl implements ProductService{
         productFromDb.setDiscount(product.getDiscount());
         productFromDb.setPrice(product.getPrice());
         productFromDb.setSpecialPrice(product.getSpecialPrice());
+//        productFromDb.setActive(product.isActive()); //this creates problem in ordinary update. Deactivates after update
 
         Product savedProduct = productRepository.save(productFromDb);
 
@@ -225,7 +250,18 @@ public class ProductServiceImpl implements ProductService{
         return modelMapper.map(savedProduct,ProductDTO.class);
     }
 
-    @Override
+//    @Override //hard delete
+//    public ProductDTO deleteProduct(Long productId) {
+//        Product product = productRepository.findById(productId)
+//                .orElseThrow(()->new ResourceNotFoundException("Product","productId",productId));
+//
+//        List<Cart> carts = cartRepository.findCartsByProductId(productId);
+//        carts.forEach(cart -> cartService.deleteProductFromCart(cart.getCartId(),productId));
+//
+//        productRepository.delete(product);
+//        return modelMapper.map(product,ProductDTO.class);
+//    }
+    @Override //soft delete
     public ProductDTO deleteProduct(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(()->new ResourceNotFoundException("Product","productId",productId));
@@ -233,7 +269,8 @@ public class ProductServiceImpl implements ProductService{
         List<Cart> carts = cartRepository.findCartsByProductId(productId);
         carts.forEach(cart -> cartService.deleteProductFromCart(cart.getCartId(),productId));
 
-        productRepository.delete(product);
+        product.setActive(false);
+        productRepository.save(product);
         return modelMapper.map(product,ProductDTO.class);
     }
 
