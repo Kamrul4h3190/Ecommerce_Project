@@ -23,4 +23,6 @@ public interface ProductService {
     ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder,Boolean isActive);
 
     ProductDTO activateProduct(Long productId);
+
+    ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder, Boolean isActive);
 }
