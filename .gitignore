@@ -33,3 +33,7 @@ build/
 .vscode/
 /.env
 *.txt
+
+###Docker###
+.env
+.env.docker

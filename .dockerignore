@@ -1,0 +1,7 @@
+.env
+.git
+.idea
+target
+*.iml
+repo_password.txt
+sample_users.txt
