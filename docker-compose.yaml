@@ -5,7 +5,7 @@ services:
     container_name: ecommerce-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DATASOURCE_PASSWORD}
       MYSQL_DATABASE: ecommerce
     volumes:
       - mysql_data:/var/lib/mysql
@@ -17,7 +17,7 @@ services:
       start_period: 30s
 
   backend:
-    image: kamrul4h3190/sb-ecom:latest
+    image: kamrul4h3190/ecommerce-backend:latest
     container_name: ecommerce-backend
     restart: unless-stopped
     depends_on:
@@ -26,10 +26,10 @@ services:
     environment:
       DATASOURCE_URL: jdbc:mysql://mysql:3306/ecommerce
       DATASOURCE_USER: root
-      DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
-      FRONTEND_URL: http://localhost:5173
+      FRONTEND_URL: ${FRONTEND_URL}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
     ports:
       - "8080:8080"
@@ -47,7 +47,7 @@ services:
     environment:
       VITE_BACK_END_URL: ${VITE_BACK_END_URL}
       VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
-      VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
+      VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
 
 volumes:
   mysql_data:

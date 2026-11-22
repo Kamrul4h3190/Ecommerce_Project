@@ -40,8 +40,8 @@ public class JwtUtils {
             return null;
         }
     }
-
-    public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
+    //local
+    /*public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
         String jwt = generateTokenFromUsername(userPrincipal.getUsername());
         ResponseCookie cookie = ResponseCookie.from(jwtCookie, jwt)
                 .path("/api")
@@ -56,6 +56,28 @@ public class JwtUtils {
                 .path("/api")
                 .build();
         return cookie;
+    }*/
+
+    //production
+    public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
+        String jwt = generateTokenFromUsername(userPrincipal.getUsername());
+
+        return ResponseCookie.from(jwtCookie, jwt)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .build();
+    }
+    public ResponseCookie getCleanJwtCookie() {
+        return ResponseCookie.from(jwtCookie, "")
+                .path("/")
+                .maxAge(0)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .build();
     }
 
     public String generateTokenFromUsername(String username) {
