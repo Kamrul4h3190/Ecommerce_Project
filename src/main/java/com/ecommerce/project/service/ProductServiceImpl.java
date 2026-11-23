@@ -258,8 +258,20 @@ public class ProductServiceImpl implements ProductService{
     }
 
 
-    private String constructImageUrl(String imageName){
-        return imageBaseUrl.endsWith("/") ? imageBaseUrl+imageName : imageBaseUrl+"/"+imageName;
+    private String constructImageUrl(String imageName) {
+
+        if (imageName == null || imageName.isBlank()) {
+            return imageName;
+        }
+
+        if (imageName.startsWith("http://")
+                || imageName.startsWith("https://")) {
+            return imageName;
+        }
+
+        return imageBaseUrl.endsWith("/")
+                ? imageBaseUrl + imageName
+                : imageBaseUrl + "/" + imageName;
     }
 
     @Override
@@ -281,7 +293,11 @@ public class ProductServiceImpl implements ProductService{
         }
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> modelMapper.map(product, ProductDTO.class))
+                .map(product -> {
+                    ProductDTO dto = modelMapper.map(product, ProductDTO.class);
+                    dto.setImage(constructImageUrl(product.getImage()));
+                    return dto;
+                })
                 .toList();
         ProductResponse productResponse = new ProductResponse();
         productResponse.setContent(productDTOS);
@@ -302,7 +318,11 @@ public class ProductServiceImpl implements ProductService{
 
         List<Product>  products = pageProducts.getContent();
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> modelMapper.map(product, ProductDTO.class))
+                .map(product -> {
+                    ProductDTO dto = modelMapper.map(product, ProductDTO.class);
+                    dto.setImage(constructImageUrl(product.getImage()));
+                    return dto;
+                })
                 .toList();
         if(products.isEmpty()){
             throw new APIException("Products not found with keyword: " + keyword);
@@ -380,7 +400,10 @@ public class ProductServiceImpl implements ProductService{
 
         productFromDb.setImage(fileName);
         Product updatedProduct = productRepository.save(productFromDb);
-        return modelMapper.map(updatedProduct, ProductDTO.class);
+        ProductDTO updatedProductDTO = modelMapper.map(updatedProduct, ProductDTO.class);
+        updatedProductDTO.setImage(constructImageUrl(updatedProduct.getImage()));
+
+        return updatedProductDTO;
     }
 
 
